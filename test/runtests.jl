@@ -3,29 +3,38 @@
 using GMime
 using Test, Dates
 
-function gen_email_string(date::String, Z::String, z::String)
+function gen_received_string(date::String, tzoneoffset::String="+0000", tzone::String="UTC")
+    return """Received:        from 1testtests.com (1testtests.com [123.11.11.11])          by 1testtests with SMTPS id 1testtests;        $date $tzoneoffset $tzone\n"""
+end
+
+function gen_email_string(
+    date::String, 
+    tzoneoffset::String="+0000",
+    tzone::String="UTC",
+    received::String=""
+)
     return """MIME-Version: 1.0
-       Date: $date $Z $z 
-       Message-ID: <CAOU+8LMfxVaPMmigMQE2qTBLSbNdKQVps=Fi0S3X8LnfxT2xee@mail.email.com>
-       Subject: Test Message
-       From: Test User <username@example.com>
-       To: Test User <username@example.com>
-       Content-Type: multipart/alternative; boundary="000000000000dd23a50621ff39e8"
+    $(received)Date: $date $tzoneoffset $tzone 
+    Message-ID: <CAOU+8LMfxVaPMmigMQE2qTBLSbNdKQVps=Fi0S3X8LnfxT2xee@mail.email.com>
+    Subject: Test Message
+    From: Test User <username@example.com>
+    To: Test User <username@example.com>
+    $(received)Content-Type: multipart/alternative; boundary="000000000000dd23a50621ff39e8"
 
-       --000000000000dd23a50621ff39e8
-       Content-Type: text/plain; charset="UTF-8"
+    --000000000000dd23a50621ff39e8
+    Content-Type: text/plain; charset="UTF-8"
 
-       Hello World!
+    Hello World!
 
-       Best regards,
-       Test User
+    Best regards,
+    Test User
 
-       --000000000000dd23a50621ff39e8
-       Content-Type: text/html; charset="UTF-8"
+    --000000000000dd23a50621ff39e8
+    Content-Type: text/html; charset="UTF-8"
 
-       <div dir="ltr">Hello World!<div><br></div><div>Best regards,</div><div>Test User</div></div>
+    <div dir="ltr">Hello World!<div><br></div><div>Best regards,</div><div>Test User</div></div>
 
-       --000000000000dd23a50621ff39e8--"""
+    --000000000000dd23a50621ff39e8--"""
 end
 
 @testset "Parse Email" begin
@@ -120,5 +129,18 @@ end
         email_str = gen_email_string(date, "EDT", "")
         email = parse_email(email_str)
         @test email.date == DateTime("1991-09-19 16:41:43", format)
+    end
+    
+    @testset "Case №8: Headers" begin
+        date = "Thu, 19 Sep 91 12:41:43"
+        format = DateFormat("yyyy-mm-dd HH:MM:SS")
+
+        received = gen_received_string(date, "+0400", "(PDT)")
+        email_str = gen_email_string(date, "+0300", "(CST)", received)
+        email = parse_email(email_str)
+
+        @test email.date == DateTime("1991-09-19 09:41:43", format)
+        @test email.received_at == [DateTime("1991-09-19 08:41:43", format), DateTime("1991-09-19 08:41:43", format)]
+        Base.show(stdout, email)
     end
 end

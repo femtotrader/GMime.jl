@@ -34,7 +34,9 @@ export GMimeStream,
     GMimePart,
     GMimeContentType,
     GMimeDataWrapper,
-    GMimeFilter
+    GMimeFilter,
+    GMimeHeaderList,
+    GMimeHeader
 
 export InternetAddressList,
     InternetAddress
@@ -84,6 +86,10 @@ export g_mime_parser_new,
     g_mime_parser_construct_part,
     g_mime_parser_construct_message
 
+export g_mime_parser_options_new,
+    g_mime_parser_options_free,
+    g_mime_format_options_get_default
+
 export g_mime_object_get_header,
     g_mime_object_get_header_list,
     g_mime_object_get_content_type,
@@ -125,8 +131,11 @@ export internet_address_get_name,
 
 export g_mime_header_list_get_count,
     g_mime_header_list_get_header_at,
+    g_mime_header_list_get_header,
     g_mime_header_get_name,
-    g_mime_header_get_value
+    g_mime_header_get_value,
+    g_mime_object_get_headers,
+    g_mime_header_format_received
 
 export g_mime_part_is_attachment,
     g_mime_part_get_filename,
@@ -149,6 +158,8 @@ export g_object_unref,
 export EmailAttachment,
     Email,
     parse_email
+
+export g_mime_utils_header_decode_date
 
 using gmime_jll
 
@@ -421,6 +432,21 @@ function g_mime_content_type_get_parameter(content_type, name)
     return ccall((:g_mime_content_type_get_parameter, libgmime), Ptr{UInt8}, (Ptr{GMimeContentType}, Ptr{UInt8}), content_type, name)
 end
 
+#__ GMimeParserOptions
+
+function g_mime_parser_options_new()
+    return ccall((:g_mime_parser_options_new, libgmime), Ptr{GMimeParserOptions}, ())
+end
+
+function g_mime_parser_options_free(options)
+    return ccall((:g_mime_parser_options_free, libgmime), Ptr{Cvoid}, (Ptr{GMimeParserOptions},), options)
+end
+
+#__ GMimeFormatOptions
+
+function g_mime_format_options_get_default()
+    return ccall((:g_mime_format_options_get_default, libgmime), Ptr{GMimeFormatOptions}, ())
+end
 #__ GMimeMessage
 
 function g_mime_message_new(pretty_headers)
@@ -553,12 +579,24 @@ function g_mime_header_list_get_header_at(headers, index)
     return ccall((:g_mime_header_list_get_header_at, libgmime), Ptr{GMimeHeader}, (Ptr{GMimeHeaderList}, Int), headers, index)
 end
 
+function g_mime_header_list_get_header(headers, name)
+    return ccall((:g_mime_header_list_get_header, libgmime), Ptr{GMimeHeader}, (Ptr{GMimeHeaderList}, Ptr{UInt8}), headers, name)
+end
+
 function g_mime_header_get_name(header)
     return ccall((:g_mime_header_get_name, libgmime), Ptr{UInt8}, (Ptr{GMimeHeader},), header)
 end
 
 function g_mime_header_get_value(header)
     return ccall((:g_mime_header_get_value, libgmime), Ptr{UInt8}, (Ptr{GMimeHeader},), header)
+end
+
+function g_mime_object_get_headers(object, options)
+    return ccall((:g_mime_object_get_headers, libgmime), Ptr{UInt8}, (Ptr{GMimeObject}, Ptr{GMimeFormatOptions}), object, options)
+end
+
+function g_mime_header_format_received(header, options, value, charset)
+    return ccall((:g_mime_header_format_received, libgmime), Ptr{UInt8}, (Ptr{GMimeHeader}, Ptr{GMimeFormatOptions}, Ptr{Cuchar}, Ptr{Cuchar}), header, options, value, charset)
 end
 
 # TODO: Add other header list intefraces
@@ -621,6 +659,12 @@ end
 
 function g_free(ptr)
     return ccall((:g_free,  libgmime), Cvoid, (Ptr{Cvoid},), ptr)
+end
+
+#__ Utils
+
+function g_mime_utils_header_decode_date(str)
+    return ccall((:g_mime_utils_header_decode_date, libgmime), Ptr{GDateTime}, (Ptr{UInt8},), str)
 end
 
 include("Parser.jl")
